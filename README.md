@@ -32,7 +32,8 @@ Checkpointing via `MemorySaver` + `thread_id`. Swap to SQLite/Postgres for durab
 | Path | Purpose |
 |------|---------|
 | `demo.py` | Runnable entry: graph + tools + human approval |
-| `requirements.txt` | `langgraph` |
+| `requirements.txt` | `langgraph` + RAG deps (`chromadb`, optional `openai`/`tiktoken`) |
+| `rag/` | Local document Q&A (Chroma) mini-demo |
 | `src/listing_ops/` | Package root (promote demo here later) |
 | `src/listing_ops/graph/` | State & nodes |
 | `src/listing_ops/tools/` | Diagnosis / draft tools |
@@ -43,6 +44,34 @@ Checkpointing via `MemorySaver` + `thread_id`. Swap to SQLite/Postgres for durab
 | `docs/architecture.md` | Architecture notes |
 | `scripts/` | Batch eval / export scripts |
 | `outputs/` | Approved exports |
+
+
+## Local RAG mini-demo (`rag/`)
+
+Optional knowledge layer for glossary / banned terms / title guidelines. Independent of the LangGraph HITL flow.
+
+**Pipeline:** load `.md`/`.txt` → chunk (~500–1000 tokens, ~100-token overlap) → embed + persist in local Chroma → similarity top-k → optional lexical re-rank → answer (LLM if API key, else retrieval stub).
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+# first run downloads a small ONNX embedding model via Chroma (then works offline)
+python -m rag.demo --rebuild
+python -m rag.demo "宠物湿巾标题有哪些常见问题？禁限词要注意什么？"
+python -m rag.demo --rerank --top-k 5 "哪些宣称不能写在宠物湿巾 Listing？"
+```
+
+| Item | Detail |
+|------|--------|
+| Sample docs | `rag/data/*.md` (title guidelines, banned claims, ops notes) |
+| Vector DB | `rag/.chroma/` (gitignored; rebuild with `--rebuild`) |
+| Embeddings | Chroma default ONNX MiniLM (no paid key) |
+| Re-rank | `--rerank` = light lexical-overlap blend (no cross-encoder) |
+| LLM answer | Set `OPENAI_API_KEY` (or `LLM_API_KEY`); optional `OPENAI_BASE_URL` / `OPENAI_MODEL` |
+| No API key | Still demos index + retrieval + templated stub answer |
+
+Chunking uses `tiktoken` when installed, otherwise ≈4 chars/token. Short docs may yield sub-500-token chunks; they are still indexed.
 
 ## Technical challenges
 
@@ -90,7 +119,7 @@ Requirements → State fields → Wrap tools → Approval interrupt → Export +
 - [ ] ≥20 labeled eval cases + CI script  
 - [ ] Sqlite/Postgres checkpointer  
 - [ ] LLM tool-calling draft with rule fallback  
-- [ ] Lightweight RAG for brand terms / banned words  
+- [x] Lightweight RAG for brand terms / banned words (`rag/` demo)  
 - [ ] Structured JSONL traces  
 
 ## License

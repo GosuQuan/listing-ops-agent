@@ -8,3 +8,6 @@ outputs/*.json
 *.egg-info/
 dist/
 build/
+rag/.chroma/
+.env
+.DS_Store
